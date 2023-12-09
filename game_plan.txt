@@ -1,0 +1,8 @@
+Recovery procedure:
+  - Insert SD with bob, alice and dram init
+  - Glitch
+  - RPC run a keydumper payload
+  - Use keys to build an EMMC recovery image and (if needed) SNVS recovery block
+  - Remove SD, flash the image, insert SD
+  - Run the EMMC flasher RPC payload
+  - (if needed) Flash the SNVS block via JIG
