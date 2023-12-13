@@ -26,16 +26,16 @@ With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob),
 <br><br>
 ## Setup
 ### Requirements
- - a working [syscon JIG setup](https://github.com/SKGleba/bert)
- - a logic analyzer with at least two channels, a simple USB 8ch saleae/clone should work
- - a GC-SD adapter such as ["sd2vita"](https://www.bing.com/search?q=sd2vita), with a micro/sd up to 2TiB
- - a consistent, configurable pulse generator that can set 1v+ for 100ns or less.
+ - working [syscon JIG setup](https://github.com/SKGleba/bert)
+ - logic analyzer with at least two channels, a simple USB 8ch saleae/clone should work
+ - GC-SD adapter such as ["sd2vita"](https://www.bing.com/search?q=sd2vita), with a micro/sd up to 2TiB
+ - consistent, configurable pulse generator that can set 1v+ for 100ns or less.
     - for this project, the [Teensy 4.0](https://www.pjrc.com/store/teensy40.html) / [Teensy 4.1](https://www.pjrc.com/store/teensy41.html) mcu board was chosen for its high speed, tight-coupled memory and gpio controllers
     - a [chipwhisperer](https://www.newae.com/chipwhisperer) (lite) was also successfully used in this project's early iterations
- - a fast switching, logic level n-mosfet
+ - fast switching, logic level n-mosfet
     - depending on your soldering skills/setup, a breakout board might be a good idea
     - for this project, [IRLML2502](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml2502/) and [IRLML6246](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml6246/) were used
- - a 3.3v usb<->uart adapter for communicating with the Teensy 4 mcu board
+ - 3.3v usb<->uart adapter for communicating with the Teensy 4 mcu board
 ### Teensy
 TODO
 ### Wiring
@@ -65,7 +65,7 @@ The idea is that as long as it lands in the middle of an empty sector being read
 It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.
 ### Finding the *offset* and *width* pair
 The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters :) <br>
-Script arguments are based on the values found during the Calibration step, width an added broad *offset* range:<br>
+Script arguments are based on the values found during the Calibration step, with an added broad *offset* range:<br>
 ```sdboot up_to_read=<up_to_read> width=<treshold-(2*width_step)> width_max=<treshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
  - *offset** parameters should initially be broad, with further loops being more precise (eg *offset_mult=1*)
  - if the treshold is below 500, *width_step*=10 might be a better choice
