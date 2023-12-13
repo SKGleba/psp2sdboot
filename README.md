@@ -1,6 +1,6 @@
 # psp2sdboot
 This repo contains guides, payloads, schematics and scripts for use with PSP2's "SD boot mode".<br>
-<br><br>
+<br>
 ## About
 #### JIG
 On all Playstation Vita/TV units the System Controller ("syscon", "ernie") has an RPC server activated by a specific hardware circuit. When activated, syscon listens over UART for commands that can range from simple diag checks, fuse reads, calibrations, to special features such as NVS R/W that require authorization using handshakes with secret keys. More information as well as circuit schematics and RPC clients can be found in the [bert](https://github.com/SKGleba/bert) repository.
@@ -15,9 +15,6 @@ This project makes use of Voltage Fault Injection, specifically the "crowbar" me
 The result is a consistent BootROM code execution of a arbitrary code blob loaded from an unauthenticated MMC/SD storage inside the GameCard slot.
 #### BootROM RPC
 With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob), it starts an RPC server that can be used for research or executing additional specialized payloads with functionality such as key retrieval, data dumping, unbricking and more.
-<br><br>
-## Requirements
-psp2sdboot requires a compatible Playstation Vita/TV model, a [syscon JIG](https://github.com/SKGleba/bert), an SD2Vita adapter with a microsd card, a configurable pulse generator, a fast switching logic-level MOSFET, and a bunch of wires.
 #### Supported units
  - DEM-3000 : **only IRT-002**
    - Due to an unknown JIG interface-enable procedure on IRT-001 / "slideys"
@@ -26,25 +23,55 @@ psp2sdboot requires a compatible Playstation Vita/TV model, a [syscon JIG](https
  - VTE-1000 : **supported**
  - PCH-2000 : **not yet supported**
    - Due to lack of success triggering exceptions with Voltage Fault Injection
-#### GC-SD adapter
-The payload is loaded from an unauthenticated MMC/SD storage inside the GameCard slot. Any GC-SD adapter such as ["sd2vita"](https://www.bing.com/search?q=sd2vita) will work.<br>
-Any microsd up to 2TiB is supported.
-#### Pulse generator
-Any consistent, configurable pulse generator that can set 1v+ for 100ns or less should work.
-For this project, the [Teensy 4.0](https://www.pjrc.com/store/teensy40.html) / [Teensy 4.1](https://www.pjrc.com/store/teensy41.html) mcu board was chosen for its high speed, tight-coupled memory and gpio controllers.
-#### MOSFET
-Any fast switching, logic level n-mosfet will work.
- - depending on your soldering skills/setup, a breakout board might be a good idea.
- - for this project, [IRLML2502](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml2502/) and [IRLML6246](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml6246/) were used.
 <br><br>
 ## Setup
+### Requirements
+ - a working [syscon JIG setup](https://github.com/SKGleba/bert)
+ - a logic analyzer with at least two channels, a simple USB 8ch saleae/clone should work
+ - a GC-SD adapter such as ["sd2vita"](https://www.bing.com/search?q=sd2vita), with a micro/sd up to 2TiB
+ - a consistent, configurable pulse generator that can set 1v+ for 100ns or less.
+    - for this project, the [Teensy 4.0](https://www.pjrc.com/store/teensy40.html) / [Teensy 4.1](https://www.pjrc.com/store/teensy41.html) mcu board was chosen for its high speed, tight-coupled memory and gpio controllers
+    - a [chipwhisperer](https://www.newae.com/chipwhisperer) (lite) was also successfully used in this project's early iterations
+ - a fast switching, logic level n-mosfet
+    - depending on your soldering skills/setup, a breakout board might be a good idea
+    - for this project, [IRLML2502](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml2502/) and [IRLML6246](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml6246/) were used
+ - a 3.3v usb<->uart adapter for communicating with the Teensy 4 mcu board
+### Teensy
 TODO
-<br><br>
-## Calibration
+### Wiring
+TODO
+### Software
 TODO
 <br><br>
 ## SD Boot
-TODO
+### The Script
+The default sdboot script, *sdboot.py*, is a python script that loops reboot->glitch->check until *bob* is successfully loaded and executed. <br>
+Its accepted arguments/parameters and their descriptions can be listed with ```sdboot help```.
+### Calibration
+The first step is determining optimal timing parameters range for the main sdboot script, which will then find the more precise/consistent glitch timings.
+#### The "treshold" width
+The *width* of a glitch that always causes an unrecoverable crash is called the "treshold", this should be the upper *width* boundary - sdboot's *width_max* argument.<br>
+It can be determined by the following procedure:
+1. ```sdboot width=100 width_max=100000 width_step=100```
+   - note the *width* at which *dat0* cut off
+   - if there is no *dat0* cut off until 100000, the setup is wrong/faulty
+2. ```sdboot width=<cutoff_width-100> width_max=<cutoff_width+100> width_step=20```
+   - repeat at least 5 times
+   - note the *width* at which *dat0* __always__ cuts off, this is the "treshold"
+3. If the "treshold" is below 200, it might indicate a faulty circuit, slow mosfet, or a very isolated/clean setup.
+#### The "*up_to_read*" offset
+*up_to_read* is a special 0-width glitch queued to find an empty sector read op, which compensates for a high SD init/read jitter.<br>
+The idea is that as long as it lands in the middle of an empty sector being read (*dat0* pulled down), the actual fault injection glitch can be precisely triggered and timed from *dat0* going up.<br>
+It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.
+### Finding the *offset* and *width* pair
+The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters :) <br>
+Script arguments are based on the values found during the Calibration step, width an added broad *offset* range:<br>
+```sdboot up_to_read=<up_to_read> width=<treshold-(2*width_step)> width_max=<treshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
+ - *offset** parameters should initially be broad, with further loops being more precise (eg *offset_mult=1*)
+ - if the treshold is below 500, *width_step*=10 might be a better choice
+ - if the starting *width* (treshold - (2 x *width_step*)) is observed to cut off dat0, the starting *width* should be decreased by *width_step*-sized decrements
+ - ultimately it depends on luck, it might take hours or even days to find a working *offset* and *width* pair
+ - in case of success, a ```got sd boot: off=<offset>[<offset_mult>] width=<width>``` message will be displayed and the script will stop
 <br><br>
 ## Post-Exploitation
 TODO
