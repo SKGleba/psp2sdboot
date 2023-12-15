@@ -98,11 +98,11 @@ int rpcp(uint32_t arg0, uint32_t arg1, void* extra_data) {
         printf("SMI encryption key (inner):\n");
         hexdump((uint32_t)keybuf->smi_enc_key[1], 0x20, false);
         printf("SNVS AES XTS tweak:\n");
-        hexdump((uint32_t)keybuf->snvs_keys[0], 0x20, false);
+        hexdump((uint32_t)keybuf->snvs_keys[0], 0x10, false);
         printf("SNVS AES XTS dec key:\n");
-        hexdump((uint32_t)keybuf->snvs_keys[1], 0x20, false);
+        hexdump((uint32_t)keybuf->snvs_keys[1], 0x10, false);
         printf("SNVS CMAC key:\n");
-        hexdump((uint32_t)keybuf->snvs_keys[2], 0x20, false);
+        hexdump((uint32_t)keybuf->snvs_keys[2], 0x10, false);
     }
 
     printf("[RPCP] byee %X\n\n", ret);
