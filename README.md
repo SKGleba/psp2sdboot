@@ -37,6 +37,13 @@ With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob),
     - for this project, [IRLML2502](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml2502/) and [IRLML6246](https://www.infineon.com/cms/en/product/power/mosfet/n-channel/irlml6246/) were used
  - 3.3v usb<->uart adapter for communicating with the Teensy 4 mcu board
 ### Teensy
+ - Connect the Teensy 4 to a PC, enter bootloader mode
+ - Flash the latest build of [teensy4vfi](https://github.com/SKGleba/teensy4vfi) using [Teensy Loader](https://www.pjrc.com/teensy/loader_win10.html)
+ - Connect the usb<->uart adapter
+    - PC TX -> Teensy pad 0 (RX)
+    - PC RX -> Teensy pad 1 (TX)
+    - GND
+### Solder points
 TODO
 ### Wiring
 TODO
@@ -63,8 +70,8 @@ It can be determined by the following procedure:
 *up_to_read* is a special 0-width glitch queued to find an empty sector read op, which compensates for a high SD init/read jitter.<br>
 The idea is that as long as it lands in the middle of an empty sector being read (*dat0* pulled down), the actual fault injection glitch can be precisely triggered and timed from *dat0* going up.<br>
 It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.
-### Finding the *offset* and *width* pair
-The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters :) <br>
+### The *offset* and *width* pair
+The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters <br>
 Script arguments are based on the values found during the Calibration step, with an added broad *offset* range:<br>
 ```sdboot up_to_read=<up_to_read> width=<treshold-(2*width_step)> width_max=<treshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
  - *offset** parameters should initially be broad, with further loops being more precise (eg *offset_mult=1*)
