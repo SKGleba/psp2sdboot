@@ -44,9 +44,13 @@ With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob),
     - PC RX -> Teensy pad 1 (TX)
     - GND
 ### Solder points
-TODO
+There are at least two (magnet) wire solder points - Core_VDD (orange) and GC_dat0 (yellow).
+ - PCH-1000/PDEL-1000/CEM-3000/DEM-3000: [front](wiring/wires-pch1k.png)
+ - VTE-1000: [front](wiring/wires-vte-front.png) | [back](wiring/wires-vte-back.png)
+ - It is recommended to add a separate GND wire for the MOSFET.
 ### Wiring
-TODO
+The MOSFET wires should be insulated and kept as short as possible, you can even solder its legs directly to the Core_VDD capacitor.<br><br>
+![wiring](wiring/wiring.png)
 ### Software
 TODO
 <br><br>
