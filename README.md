@@ -77,7 +77,7 @@ A raw SD card image can be created using the previously compiled mkfake utility,
 The prepared SD card must then be inserted in the target's GC slot.
 <br><br>
 ## SD Boot
-The default sdboot script, *sdboot.py*, is a python script that loops reboot->glitch->check until *bob* is successfully loaded and executed. <br>
+The provided *sdboot.py* is a python script that loops reboot->glitch->check until *bob* is successfully loaded and executed. <br>
 Its accepted arguments/parameters and their descriptions can be listed with ```sdboot help```.
 ### Calibration
 The first step is determining optimal timing parameters range for the main sdboot script, which will then find the more precise/consistent glitch timings.
@@ -95,7 +95,7 @@ It can be determined by the following procedure:
 #### The "*up_to_read*" offset
 *up_to_read* is a special 0-width glitch queued to find an empty sector read op, which compensates for a high SD init/read jitter.<br>
 The idea is that as long as it lands in the middle of an empty sector being read (*dat0* pulled down), the actual fault injection glitch can be precisely triggered and timed from *dat0* going up.<br>
-It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.<br><br>
+It can be determined by altering the following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.<br><br>
 ![LA view](pics/laview-uptoread.png)
 ### Glitching
 The second step is running the sdboot python script, and letting it find a correct combination of *offset* and *width* parameters <br>
