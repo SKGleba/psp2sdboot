@@ -69,11 +69,13 @@ It can be determined by the following procedure:
 2. ```sdboot width=<cutoff_width-100> width_max=<cutoff_width+100> width_step=20```
    - repeat at least 5 times
    - note the *width* at which *dat0* __always__ cuts off, this is the "treshold"
-3. If the "treshold" is below 200, it might indicate a faulty circuit, slow mosfet, or a very isolated/clean setup.
+3. If the "treshold" is below 200, it might indicate a faulty circuit, slow mosfet, or a very isolated/clean setup.<br><br>
+![LA view](pics/laview-cutoff.png)
 #### The "*up_to_read*" offset
 *up_to_read* is a special 0-width glitch queued to find an empty sector read op, which compensates for a high SD init/read jitter.<br>
 The idea is that as long as it lands in the middle of an empty sector being read (*dat0* pulled down), the actual fault injection glitch can be precisely triggered and timed from *dat0* going up.<br>
-It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.
+It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.<br><br>
+![LA view](pics/laview-uptoread.png)
 ### The *offset* and *width* pair
 The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters <br>
 Script arguments are based on the values found during the Calibration step, with an added broad *offset* range:<br>
