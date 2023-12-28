@@ -62,17 +62,17 @@ The original setup was Windows + WSL1, but the instructions should work fine on 
  - local copies of [psp2sdboot](https://github.com/SKGleba/psp2sdboot), [teensy4vfi](https://github.com/SKGleba/teensy4vfi), [bob](https://github.com/SKGleba/bob), and [bert](https://github.com/SKGleba/bert)
  - (optional) [mepsdk](https://github.com/TeamMolecule/mepsdk)
 #### Environment
-The "root"/working directory is the local copy of this repository.
- - compile tools/mkfake.c with GCC
- - create symlinks for bob/bob_rpc.py, teensy4vfi/teensy_rpc.py, and bert/bert.py
- - create a "bob" directory in payloads/, and copy there the bob build and header files
-    - bob/build/* to payloads/bob/
-    - bob/source/include to payloads/bob/
- - "set" the environment by running the provided env.bat
+The "root", working directory should be a local copy of this repository.
+ - compile ```tools/mkfake.c``` with GCC
+ - create symlinks for ```bob/bob_rpc.py```, ```teensy4vfi/teensy_rpc.py```, and ```bert/bert.py```
+ - create a ```bob``` directory in ```payloads/```, and copy there the bob build and header files
+    - ```bob/build/*``` to ```payloads/bob/```
+    - ```bob/source/include``` to ```payloads/bob/```
+ - "set" the environment by running the provided ```env.bat```
     - this simply sets a bunch of aliases
 ### microSD card
 A raw SD card image can be created using the previously compiled mkfake utility, the syntax is ```mkfake <code_blob> <output>``` where:
- - *code_blob* is bob's glitch build - payloads/bob/bob_glitch.bin
+ - *code_blob* is bob's glitch build - ```payloads/bob/bob_glitch.bin```
  - *output* will be the SD card image
 The prepared SD card must then be inserted in the target's GC slot.
 <br><br>
@@ -111,17 +111,17 @@ Script arguments are based on the values found during the Calibration step, with
 After bob presence is confirmed with ```bob ping```, you can use the bob_rpc script to conduct further research or copy and run MeP payloads. Available RPC commands can be listed by calling the script without any arguments - ```bob```.
 ![Memory Layout](pics/sdboot_sram.png)
 ### RPC payloads
-You should put your custom payloads inside the payloads/ directory.<br>
-They can statically link to bob and bootrom for basic funtionality, see the [linker example](payloads/emmc-dump/linker.x). Headers can be found in payloads/bob/include/.<br>
+You should put your custom payloads inside the ```payloads/``` directory.<br>
+They can statically link to bob and bootrom for basic funtionality, see the [linker example](payloads/emmc-dump/linker.x). Headers can be found in ```payloads/bob/include/```.<br>
 Payloads can be executed anywhere in the physical memory, keep in mind that some is uninitialized - eg DRAM.
  - copy: ```file_send <offset> <payload_file>```
  - exec: ```exec <offset> <arg0> <arg1> <arg2_data>```, where arg2_data is a buffer passed as arg2
  - extended exec: ```exece <offset> <arg0> <arg1> <arg2> <arg..>```, up to 8 args total
 ### Key extraction
-Provided is a basic keydumper - payloads/keydumper - it can be used to get the SLSK enc/dec key partials, SNVS enc/dec keys, and the SMI encryption keys.
+Provided is a basic keydumper - ```payloads/keydumper``` - it can be used to get the SLSK enc/dec key partials, SNVS enc/dec keys, and the SMI encryption keys.
  - If you do not have SoC TX wired, you can dump the key buffer from 0x1f850000 to a file using ```bob file_dump```.
 ### Storage R/W
-The provided eMMC dumper - payloads/emmc-dump - contains code to read/write eMMC as well as the SD card. It can be used for larger data handling, eMMC dump/unbrick, crypto research and more.<br>
+The provided eMMC dumper - ```payloads/emmc-dump``` - contains code to read/write eMMC as well as the SD card. It can be used for larger data handling, eMMC dump/unbrick, crypto research and more.<br>
  - By default, the emmc dumper uses DRAM which must be first initialized. Until reimplemented, the code/binary can be copied from second_loader.
     - You can just use a different memory region, eg SPAD128K
 ### Unbricking
