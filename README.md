@@ -81,16 +81,16 @@ The provided *sdboot.py* is a python script that loops reboot->glitch->check unt
 Its accepted arguments/parameters and their descriptions can be listed with ```sdboot help```.
 ### Calibration
 The first step is determining optimal timing parameters range for the main sdboot script, which will then find the more precise/consistent glitch timings.
-#### The "treshold" width
-The *width* of a glitch that always causes an unrecoverable crash is called the "treshold", this should be the upper *width* boundary - sdboot's *width_max* argument.<br>
+#### The "threshold" width
+The *width* of a glitch that always causes an unrecoverable crash is called the "threshold", this should be the upper *width* boundary - sdboot's *width_max* argument.<br>
 It can be determined by the following procedure:
 1. ```sdboot width=100 width_max=100000 width_step=100```
    - note the *width* at which *dat0* cut off
    - if there is no *dat0* cut off until 100000, the setup is wrong/faulty
 2. ```sdboot width=<cutoff_width-100> width_max=<cutoff_width+100> width_step=20```
    - repeat at least 5 times
-   - note the *width* at which *dat0* __always__ cuts off, this is the "treshold"
-3. If the "treshold" is below 200, it might indicate a faulty circuit, slow mosfet, or a very isolated/clean setup.<br><br>
+   - note the *width* at which *dat0* __always__ cuts off, this is the "threshold"
+3. If the "threshold" is below 200, it might indicate a faulty circuit, slow mosfet, or a very isolated/clean setup.<br><br>
 ![LA view](pics/laview-cutoff.png)
 #### The "*up_to_read*" offset
 *up_to_read* is a special 0-width glitch queued to find an empty sector read op, which compensates for a high SD init/read jitter.<br>
@@ -100,10 +100,10 @@ It can be determined by altering the following command: ```sdboot up_to_read_mar
 ### Glitching
 The second step is running the sdboot python script, and letting it find a correct combination of *offset* and *width* parameters <br>
 Script arguments are based on the values found during the Calibration step, with an added broad *offset* range:<br>
-```sdboot up_to_read=<up_to_read> width=<treshold-(2*width_step)> width_max=<treshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
+```sdboot up_to_read=<up_to_read> width=<threshold-(2*width_step)> width_max=<threshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
  - *offset** parameters should initially be broad, with further loops being more precise (eg *offset_mult=1*)
- - if the treshold is below 500, *width_step*=10 might be a better choice
- - if the starting *width* (treshold - (2 x *width_step*)) is observed to cut off dat0, the starting *width* should be decreased by *width_step*-sized decrements
+ - if the threshold is below 500, *width_step*=10 might be a better choice
+ - if the starting *width* (threshold - (2 x *width_step*)) is observed to cut off dat0, the starting *width* should be decreased by *width_step*-sized decrements
  - ultimately it depends on luck, it might take hours or even days to find a working *offset* and *width* pair
  - in case of success, a ```got sd boot: off=<offset>[<offset_mult>] width=<width>``` message will be displayed and the script will stop
 <br><br>
