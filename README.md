@@ -26,7 +26,7 @@ With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob),
 <br><br>
 ## Setup
 ### Requirements
- - working [syscon JIG setup](https://github.com/SKGleba/bert)
+ - a working [syscon JIG setup](https://github.com/SKGleba/bert)
  - logic analyzer with at least two channels, a simple USB 8ch saleae/clone should work
  - GC-SD adapter such as ["sd2vita"](https://www.bing.com/search?q=sd2vita), with a micro/sd up to 2TiB
  - consistent, configurable pulse generator that can set 1v+ for 100ns or less.
@@ -38,7 +38,7 @@ With psp2sdboot, the default code blob is [bob](https://github.com/SKGleba/bob),
  - 3.3v usb<->uart adapter for communicating with the Teensy 4 mcu board
 ### Teensy
  - Connect the Teensy 4 to a PC, enter bootloader mode
- - Flash the latest build of [teensy4vfi](https://github.com/SKGleba/teensy4vfi) using [Teensy Loader](https://www.pjrc.com/teensy/loader_win10.html)
+ - Flash the latest build of [teensy4vfi](https://github.com/SKGleba/teensy4vfi) using [Teensy Loader](https://www.pjrc.com/teensy/loader.html)
  - Connect the usb<->uart adapter
     - PC TX -> Teensy pad 0 (RX)
     - PC RX -> Teensy pad 1 (TX)
@@ -52,10 +52,31 @@ There are at least two (magnet) wire solder points - Core_VDD (orange) and GC_da
 The MOSFET wires should be insulated and kept as short as possible, you can even solder its legs directly to the Core_VDD capacitor.<br><br>
 ![wiring](wiring/wiring.png)
 ### Software
-TODO
+The original setup was Windows + WSL1, but the instructions should work fine on Windows, Linux and MacOS.
+#### Prerequisites
+ - Python 3.10+
+    - + pyserial, pycryptodome
+ - GCC
+ - [Saleae Logic](https://www.saleae.com/downloads/)
+    - or whatever software your Logic Analyzer uses
+ - local copies of [psp2sdboot](https://github.com/SKGleba/psp2sdboot), [teensy4vfi](https://github.com/SKGleba/teensy4vfi), [bob](https://github.com/SKGleba/bob), and [bert](https://github.com/SKGleba/bert)
+ - (optional) [mepsdk](https://github.com/TeamMolecule/mepsdk)
+#### Environment
+The "root"/working directory is the local copy of this repository.
+ - compile tools/mkfake.c with GCC
+ - create symlinks for bob/bob_rpc.py, teensy4vfi/teensy_rpc.py, and bert/bert.py
+ - create a "bob" directory in payloads/, and copy there the bob build and header files
+    - bob/build/* to payloads/bob/
+    - bob/source/include to payloads/bob/
+ - "set" the environment by running the provided env.bat
+    - this simply sets a bunch of aliases
+### microSD card
+A raw SD card image can be created using the previously compiled mkfake utility, the syntax is ```mkfake <code_blob> <output>``` where:
+ - *code_blob* is bob's glitch build - payloads/bob/bob_glitch.bin
+ - *output* will be the SD card image
+The prepared SD card must then be inserted in the target's GC slot.
 <br><br>
 ## SD Boot
-### The Script
 The default sdboot script, *sdboot.py*, is a python script that loops reboot->glitch->check until *bob* is successfully loaded and executed. <br>
 Its accepted arguments/parameters and their descriptions can be listed with ```sdboot help```.
 ### Calibration
@@ -76,8 +97,8 @@ It can be determined by the following procedure:
 The idea is that as long as it lands in the middle of an empty sector being read (*dat0* pulled down), the actual fault injection glitch can be precisely triggered and timed from *dat0* going up.<br>
 It can be determined by the altering following command: ```sdboot up_to_read_mark=100 up_to_read=298400000```. Change *up_to_read* until the *mosfet* line spike happens around the middle of an empty sector read.<br><br>
 ![LA view](pics/laview-uptoread.png)
-### The *offset* and *width* pair
-The second step is running the sdboot python script, and hoping it finds a correct combination of *offset* and *width* parameters <br>
+### Glitching
+The second step is running the sdboot python script, and letting it find a correct combination of *offset* and *width* parameters <br>
 Script arguments are based on the values found during the Calibration step, with an added broad *offset* range:<br>
 ```sdboot up_to_read=<up_to_read> width=<treshold-(2*width_step)> width_max=<treshold+width_step> width_step=20 offset=100 offset_max=10000 offset_mult=10 offset_step=40```
  - *offset** parameters should initially be broad, with further loops being more precise (eg *offset_mult=1*)
@@ -87,7 +108,35 @@ Script arguments are based on the values found during the Calibration step, with
  - in case of success, a ```got sd boot: off=<offset>[<offset_mult>] width=<width>``` message will be displayed and the script will stop
 <br><br>
 ## Post-Exploitation
-TODO
+After bob presence is confirmed with ```bob ping```, you can use the bob_rpc script to conduct further research or copy and run MeP payloads. Available RPC commands can be listed by calling the script without any arguments - ```bob```.
+![Memory Layout](pics/sdboot_sram.png)
+### RPC payloads
+You should put your custom payloads inside the payloads/ directory.<br>
+They can statically link to bob and bootrom for basic funtionality, see the [linker example](payloads/emmc-dump/linker.x). Headers can be found in payloads/bob/include/.<br>
+Payloads can be executed anywhere in the physical memory, keep in mind that some is uninitialized - eg DRAM.
+ - copy: ```file_send <offset> <payload_file>```
+ - exec: ```exec <offset> <arg0> <arg1> <arg2_data>```, where arg2_data is a buffer passed as arg2
+ - extended exec: ```exece <offset> <arg0> <arg1> <arg2> <arg..>```, up to 8 args total
+### Key extraction
+Provided is a basic keydumper - payloads/keydumper - it can be used to get the SLSK enc/dec key partials, SNVS enc/dec keys, and the SMI encryption keys.
+ - If you do not have SoC TX wired, you can dump the key buffer from 0x1f850000 to a file using ```bob file_dump```.
+### Storage R/W
+The provided eMMC dumper - payloads/emmc-dump - contains code to read/write eMMC as well as the SD card. It can be used for larger data handling, eMMC dump/unbrick, crypto research and more.<br>
+ - By default, the emmc dumper uses DRAM which must be first initialized. Until reimplemented, the code/binary can be copied from second_loader.
+    - You can just use a different memory region, eg SPAD128K
+### Unbricking
+At the time of writing, there is no single tool to diagnose and fix common "bricks".<br>
+You need to get the boot log, read [henkaku wiki](https://wiki.henkaku.xyz/) to find the probable brick cause, and use the provided tools/payloads to fix the console.
+ - SoC TX - for boot log - can be redirected to Syscon TX / USB TX by changing nvs byte 0x481 from 0xFF to 0x00, ```nvs-write 0x481 0x1 00```
+ - some more uncommon bricks might require you to reverse engineer the OS, i recommend [Ghidra](https://ghidra-sre.org/)
+    - [Vita Loader for Ghidra](https://github.com/CreepNT/VitaLoaderRedux)
+    - [sceutils](https://github.com/TeamMolecule/sceutils) to decrypt the firmware
 <br><br>
 ## Credits
-TODO
+This project was made in collaboration with Proxima and Mathieulh.<br><br>
+Additional thanks to:
+ - xyz - for help with hardware work, research, intial glitching, tests, spoonfeeding and handholding
+ - yifanlu and Team Molecule, whose work served as the foundation for this project
+ - all [bert](https://github.com/SKGleba/bert) contributors
+ - [henkaku wiki](https://wiki.henkaku.xyz) contributors
+
