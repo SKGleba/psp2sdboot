@@ -48,7 +48,7 @@ RESET:
     lw $3, 0x4 ($7)
     movu $1, brom_sdif_gctx
     bsr brom_read_sector_sd
-    add $7, 4
+    add $7, 0xC
     bra 1b
 2:
     movu $7, sdread_args

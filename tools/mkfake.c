@@ -240,8 +240,18 @@ int main(int argc, char* argv[]) {
                 if (injectBytes(output, (payload_loc[0] * BLOCK_SIZE) + STAGE1_STAGE2_PARAMBUF, s1load_params, 0xC))
                     return -1;
             } else {
-                if (injectBytes(output, (payload_loc[0] * BLOCK_SIZE) + STAGE1_EXTRAS_PARAMARR + (i * 0xC), s1load_params, 0xC))
-                    return -1;
+                // find the first free entry in the array
+                uint32_t tmp[6];
+                memcpy(tmp, s1load_params, 0xC);
+                for (int x = 0; x < 0x10; x++) {
+                    if (readBytes(output, (payload_loc[0] * BLOCK_SIZE) + STAGE1_EXTRAS_PARAMARR + (x * 0xC), &tmp[3], 0xC))
+                        return -1;
+                    if (tmp[3] == 0xFFFFFFFF) {
+                        if (injectBytes(output, (payload_loc[0] * BLOCK_SIZE) + STAGE1_EXTRAS_PARAMARR + (x * 0xC), tmp, 2 * 0xC))
+                            return -1;
+                        break;
+                    }
+                }
             }
         }
         if (appendBytes(output, full_va, ADDCONT_SIZE))
