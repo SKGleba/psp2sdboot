@@ -1,27 +1,51 @@
 import sys
 import time
+import re
 import bert
 import teensy_rpc
+
+## my pstv:
+# stage1: 158000000 / 900 / 130
+# small: 341000000 / 100000 / 130
+# big: 385000000 / 1100 / 130
+# max (32kb): 498000000 / 160 / 130
+# some logic: (read+ib) * ((first_read / (read+ib)) + 5 + (payload_size / 512)) ~= up_to_read=5215000 up_to_read_mult=(34 + (payload_size / 512))
 
 DEFAULT_VARS_DICT = {
     "mosfet" : [22, "teensy pad to which the mosfet gate is connected"],
     "dat0" : [23, "teensy pad to which the dat0 probe is connected"],
-    "up_to_read" : [310000000, "delay between dat0 going up and the ~middle of an empty, post-payload sector read"],
+    "up_to_read" : [498000000, "delay between dat0 going up and the ~middle of an empty, post-payload sector read"],
     "up_to_read_mult" : [1, "multiplier for the [up_to_read] delay"],
     "up_to_read_mark" : [0, "(debug) set this if you want to insert a glitch after the up_to_read delay"],
-    "offset" : [90490, "delay between end of sector read and glitch insertion, starting value for the [width->width_max] loop"],
+    "offset" : [160, "delay between end of sector read and glitch insertion, starting value for the [width->width_max] loop"],
     "offset_mult" : [1, "multiplier for the [offset] delay"],
-    "width" : [180, "how long the glitch/mosfet is held for, starting value for the glitch loop"],
+    "width" : [130, "how long the glitch/mosfet is held for, starting value for the glitch loop"],
     "state" : [1, "dat0 up pad logic level, set this to 0 if dat0 is inverted"],
-    "width_max" : [180, "max [width] value for the glitch loop"],
-    "width_step" : [10, "[width] increment size between each attempt in the glitch loop"],
+    "width_max" : [130, "max [width] value for the glitch loop"],
+    "width_step" : [5, "[width] increment size between each attempt in the glitch loop"],
     "delay_next" : [1, "delay (in seconds) between each attempt in the glitch loop"],
     "delay_boot" : [1, "delay (in seconds) between console shutdown and glitch attempt"],
-    "delay_check" : [2, "delay (in seconds) between sdboot/glitch attempt and success confirmation checks"],
-    "offset_max" : [90490, "max [offset] value for the [width->width_max] loop"],
-    "offset_step" : [10, "[offset] increment size after each [width->width_max] loop"]
+    "delay_check" : [2.5, "delay (in seconds) between sdboot/glitch attempt and success confirmation checks"],
+    "offset_max" : [160, "max [offset] value for the [width->width_max] loop"],
+    "offset_step" : [10, "[offset] increment size after each [width->width_max] loop"],
+    "loops" : [0, "glitch loop count, 0 - infinite"]
 }
 
+VAR_ALIASES_DICT = {
+    "u" : "up_to_read",
+    "ux" : "up_to_read_mult",
+    "o" : "offset",
+    "ox" : "offset_mult",
+    "om" : "offset_max",
+    "os" : "offset_step",
+    "w" : "width",
+    "wm" : "width_max",
+    "ws" : "width_step",
+    "dn" : "delay_next",
+    "db" : "delay_boot",
+    "dc" : "delay_check",
+    "l" : "loops"
+}
 
 def prep_glitch(argd, offset, width):
     uptoread = {param: value[0] for param, value in teensy_rpc.DEFAULT_ARG_DICT.copy().items()}
@@ -44,8 +68,8 @@ def prep_glitch(argd, offset, width):
     glitch["driver"] = argd["mosfet"]
     glitch["queue"] = 1
 
-    teensy_rpc.glitch_add(uptoread)
-    teensy_rpc.glitch_add(glitch)
+    teensy_rpc.glitch_add_dfl(uptoread)
+    teensy_rpc.glitch_add_dfl(glitch)
 
     teensy_rpc.send_rpc_cmd("glitch_arm", [1])
 
@@ -70,7 +94,8 @@ def try_sdboot(argd, offset, width):
 
 def glitch_loop(argd):
     teensy_rpc.send_rpc_cmd("set_clk", [600000000]) # set glitch clk
-    while True:
+    loopc = 0
+    while argd["loops"] == 0 or loopc < argd["loops"]:
         for offset in range(argd["offset"], argd["offset_max"] + 1, argd["offset_step"]):
             for width in range(argd["width"], argd["width_max"] + 1, argd["width_step"]):
                 print("try off={} width={}".format(offset, width))
@@ -81,12 +106,11 @@ def glitch_loop(argd):
                     return True
                 print("delay_next")
                 time.sleep(argd["delay_next"])
-
-
+        loopc += 1
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "help":
-        print("\nUsage: " + sys.argv[0] + " param=value par6=val6 par3=val3 ...\n")
+        print("\nUsage: " + sys.argv[0] + " param=value par6+val6 par3-val3 ...\n")
         print("Descr: " + "insert glitches during sdboot in goal of executing the flashed payload" + "\n")
         print(f"{'PARAM':>16}" + " : " + f"{'DEFAULT':^11}" + " : " + "DESCRIPTION")
         print(f"{'-----':>16}" + " : " + f"{'-------':^11}" + " : " + "-----------")
@@ -95,9 +119,23 @@ if __name__ == "__main__":
     else:
         arg_dict = {param: value[0] for param, value in DEFAULT_VARS_DICT.copy().items()}
         for arg in sys.argv[1:]:
-            key, val = arg.split('=')
+            key, val = re.split(r'[=\+\-\/\*]', arg, maxsplit=1)
+            if key in VAR_ALIASES_DICT:
+                    key = VAR_ALIASES_DICT[key]
             if val.startswith('0x'):
-                arg_dict[key] = int(val, 16)
+                val = int(val, 16)
+            elif '.' in val:
+                val = float(val)
             else:
-                arg_dict[key] = int(val)
+                val = int(val)
+            if '=' in arg:
+                arg_dict[key] = val
+            elif '+' in arg:
+                arg_dict[key] += val
+            elif '-' in arg:
+                arg_dict[key] -= val
+            elif '*' in arg:
+                arg_dict[key] *= val
+            elif '/' in arg:
+                arg_dict[key] /= val
         glitch_loop(arg_dict)

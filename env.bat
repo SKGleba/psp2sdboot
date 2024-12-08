@@ -7,6 +7,7 @@ DOSKEY misc=python misc.py $*
 DOSKEY alice=python alice_rpc.py $*
 DOSKEY teensy=python teensy_rpc.py $*
 DOSKEY sdboot=python sdboot.py $*
+DOSKEY sdwire=python sdwire.py $*
 
 DOSKEY info=python bert.py info $*
 DOSKEY mode=python bert.py mode $*
@@ -65,6 +66,12 @@ if %1.==alice. (
     DOSKEY file_send=python alice_rpc.py file_send $*
     DOSKEY file_dump=python alice_rpc.py file_dump $*
     DOSKEY file_append=python alice_rpc.py file_append $*
+    DOSKEY sdinit=python alice_rpc.py init_storage 0x0 $*
+    DOSKEY sdread=python alice_rpc.py read_sd $*
+    DOSKEY sdwrite=python alice_rpc.py write_sd $*
+    DOSKEY emmcinit=python alice_rpc.py init_storage 0x1 $*
+    DOSKEY emmcread=python alice_rpc.py read_emmc $*
+    DOSKEY emmcwrite=python alice_rpc.py write_emmc $*
 ) else (
     echo load rpc env for bob
     DOSKEY read32=python bob_rpc.py read32 $*
@@ -82,11 +89,19 @@ if %1.==alice. (
     DOSKEY copyto=python bob_rpc.py copyto $*
     DOSKEY copyfrom=python bob_rpc.py copyfrom $*
     DOSKEY exec=python bob_rpc.py exec $*
-    DOSKEY execbig=python bob_rpc.py execbig $*
+    DOSKEY exece=python bob_rpc.py exece $*
     DOSKEY file_send=python bob_rpc.py file_send $*
     DOSKEY file_dump=python bob_rpc.py file_dump $*
     DOSKEY file_append=python bob_rpc.py file_append $*
     DOSKEY alice_schedule_task=python bob_rpc.py alice_schedule_task $*
+    DOSKEY regina=python regina_rpc.py $*
+    DOSKEY rgn=python regina_rpc.py $*
+    DOSKEY sdinit=python bob_rpc.py init_storage 0x0 $*
+    DOSKEY sdread=python bob_rpc.py read_sd $*
+    DOSKEY sdwrite=python bob_rpc.py write_sd $*
+    DOSKEY emmcinit=python bob_rpc.py init_storage 0x1 $*
+    DOSKEY emmcread=python bob_rpc.py read_emmc $*
+    DOSKEY emmcwrite=python bob_rpc.py write_emmc $*
 )
 
 DOSKEY test=python misc.py test $*

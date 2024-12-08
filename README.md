@@ -71,7 +71,7 @@ The "root", working directory should be a local copy of this repository.
  - "set" the environment by running the provided ```env.bat```
     - this simply sets a bunch of aliases
 ### microSD card
-A raw SD card image can be created using the previously compiled mkfake utility, the syntax is ```mkfake <code_blob> <output>``` where:
+A raw SD card image can be created using the previously compiled mkfake utility, the syntax is ```mkfake <code_blob> -o <output>``` where:
  - *code_blob* is bob's glitch build - ```payloads/bob/bob_glitch.bin```
  - *output* will be the SD card image
 The prepared SD card must then be inserted in the target's GC slot.
