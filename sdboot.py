@@ -10,14 +10,15 @@ import teensy_rpc
 # big: 385000000 / 1100 / 130
 # max (32kb): 498000000 / 160 / 130
 # some logic: (read+ib) * ((first_read / (read+ib)) + 5 + (payload_size / 512)) ~= up_to_read=5215000 up_to_read_mult=(34 + (payload_size / 512))
-
+# 470/125
+# 300,2700/130
 DEFAULT_VARS_DICT = {
     "mosfet" : [22, "teensy pad to which the mosfet gate is connected"],
     "dat0" : [23, "teensy pad to which the dat0 probe is connected"],
-    "up_to_read" : [498000000, "delay between dat0 going up and the ~middle of an empty, post-payload sector read"],
+    "up_to_read" : [158000000, "delay between dat0 going up and the ~middle of an empty, post-payload sector read"],
     "up_to_read_mult" : [1, "multiplier for the [up_to_read] delay"],
     "up_to_read_mark" : [0, "(debug) set this if you want to insert a glitch after the up_to_read delay"],
-    "offset" : [160, "delay between end of sector read and glitch insertion, starting value for the [width->width_max] loop"],
+    "offset" : [200, "delay between end of sector read and glitch insertion, starting value for the [width->width_max] loop"],
     "offset_mult" : [1, "multiplier for the [offset] delay"],
     "width" : [130, "how long the glitch/mosfet is held for, starting value for the glitch loop"],
     "state" : [1, "dat0 up pad logic level, set this to 0 if dat0 is inverted"],
@@ -25,9 +26,9 @@ DEFAULT_VARS_DICT = {
     "width_step" : [5, "[width] increment size between each attempt in the glitch loop"],
     "delay_next" : [1, "delay (in seconds) between each attempt in the glitch loop"],
     "delay_boot" : [1, "delay (in seconds) between console shutdown and glitch attempt"],
-    "delay_check" : [2.5, "delay (in seconds) between sdboot/glitch attempt and success confirmation checks"],
-    "offset_max" : [160, "max [offset] value for the [width->width_max] loop"],
-    "offset_step" : [10, "[offset] increment size after each [width->width_max] loop"],
+    "delay_check" : [3, "delay (in seconds) between sdboot/glitch attempt and success confirmation checks"],
+    "offset_max" : [200, "max [offset] value for the [width->width_max] loop"],
+    "offset_step" : [2400, "[offset] increment size after each [width->width_max] loop"],
     "loops" : [0, "glitch loop count, 0 - infinite"]
 }
 
@@ -68,10 +69,12 @@ def prep_glitch(argd, offset, width):
     glitch["driver"] = argd["mosfet"]
     glitch["queue"] = 1
 
-    teensy_rpc.glitch_add_dfl(uptoread)
+    if teensy_rpc.glitch_add_dfl(uptoread, max_wait=5) < 0:
+        print("Failed to communicate with teensy, reset?")
+        return False
     teensy_rpc.glitch_add_dfl(glitch)
-
     teensy_rpc.send_rpc_cmd("glitch_arm", [1])
+    return True
 
 
 def try_sdboot(argd, offset, width):
@@ -81,32 +84,40 @@ def try_sdboot(argd, offset, width):
     time.sleep(argd["delay_boot"])
     print("try sdboot")
     bert.handle_cmd("shbuf-write", ["","","00000000"])
-    prep_glitch(argd, offset, width)
+    if prep_glitch(argd, offset, width) == False:
+        print("E: failed to prep glitch")
+        return -1
     bert.handle_cmd("unlock-sdboot", ["","",0])
     print("delay_check")
     time.sleep(argd["delay_check"])
     print("check result")
     bert.client.send_cmd(bytearray.fromhex("0103000000"), 0)
     if bert.client.get_resp().hex().upper()[10:18] == "BEBAFECA":
-        return True
-    return False
+        return 1
+    return 0
 
 
 def glitch_loop(argd):
-    teensy_rpc.send_rpc_cmd("set_clk", [600000000]) # set glitch clk
+    if teensy_rpc.send_rpc_cmd("set_clk", [600000000], max_wait=5) < 0:
+        print("Failed to communicate with teensy, reset?")
+        return False
     loopc = 0
     while argd["loops"] == 0 or loopc < argd["loops"]:
         for offset in range(argd["offset"], argd["offset_max"] + 1, argd["offset_step"]):
             for width in range(argd["width"], argd["width_max"] + 1, argd["width_step"]):
                 print("try off={} width={}".format(offset, width))
-                if try_sdboot(argd, offset, width) == True:
+                ret = try_sdboot(argd, offset, width)
+                if ret == 1:
                     print("--------------------------------------------")
                     print("got sd boot: off={}[x{}] width={}".format(offset, argd["offset_mult"], width))
                     print("--------------------------------------------")
                     return True
+                elif ret == -1:
+                    return False
                 print("delay_next")
                 time.sleep(argd["delay_next"])
         loopc += 1
+    return False
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "help":
